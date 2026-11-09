@@ -1,0 +1,10 @@
+{
+  "domain": "solaredge_v2_test",
+  "name": "SolarEdge V2 Test",
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://github.com/Cindyst1/solaredge-v2-test",
+  "issue_tracker": "https://github.com/Cindyst1/solaredge-v2-test/issues",
+  "iot_class": "cloud_polling",
+  "version": "0.1.0"
+}

@@ -1,0 +1,31 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "SolarEdge V2-test",
+        "description": "Gebruik een SolarEdge Monitoring API-app met Site Access, SITE_DATA en http://localhost:8080/oauth/callback als redirect-URL.",
+        "data": {
+          "client_id": "Client ID",
+          "client_secret": "Client Secret",
+          "production_start": "Startdatum productie (JJJJ-MM-DD)"
+        }
+      },
+      "callback": {
+        "title": "Toestemming geven",
+        "description": "Open de [SolarEdge-aanmelding]({authorize_url}) op hetzelfde apparaat. Geef toestemming en kopieer de volledige localhost-URL uit de adresbalk, ook als de pagina een verbindingsfout toont.",
+        "data": { "callback": "Volledige localhost-URL" }
+      }
+    },
+    "error": {
+      "invalid_input": "Controleer de Client ID, Client Secret en startdatum.",
+      "invalid_callback": "Gebruik de volledige localhost-URL van deze aanmelding."
+    },
+    "abort": {
+      "already_configured": "Deze installatie is al gekoppeld.",
+      "wrong_site": "Kies dezelfde SolarEdge-installatie als bij de eerdere koppeling.",
+      "authorization_failed": "SolarEdge heeft de aanmelding geweigerd. Controleer je appgegevens en start een nieuwe aanmelding.",
+      "cannot_connect": "SolarEdge gaf geen bruikbare productiestand terug. Start de configuratie opnieuw.",
+      "reauth_successful": "De SolarEdge-koppeling is vernieuwd."
+    }
+  }
+}

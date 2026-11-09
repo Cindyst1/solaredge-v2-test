@@ -1,0 +1,31 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "SolarEdge V2 test",
+        "description": "Use a SolarEdge Monitoring API app with Site Access, SITE_DATA and http://localhost:8080/oauth/callback as its redirect URL.",
+        "data": {
+          "client_id": "Client ID",
+          "client_secret": "Client Secret",
+          "production_start": "Production start date (YYYY-MM-DD)"
+        }
+      },
+      "callback": {
+        "title": "Authorize site access",
+        "description": "Open the [SolarEdge sign-in]({authorize_url}) on the same device. Approve access and copy the full localhost URL from the address bar, even if the page shows a connection error.",
+        "data": { "callback": "Full localhost URL" }
+      }
+    },
+    "error": {
+      "invalid_input": "Check the Client ID, Client Secret and production start date.",
+      "invalid_callback": "Use the full localhost URL from this sign-in."
+    },
+    "abort": {
+      "already_configured": "This site is already configured.",
+      "wrong_site": "Select the same SolarEdge site as before.",
+      "authorization_failed": "SolarEdge rejected the authorization. Check your app credentials and start a fresh sign-in.",
+      "cannot_connect": "SolarEdge did not return a usable production total. Start setup again.",
+      "reauth_successful": "SolarEdge authorization was renewed."
+    }
+  }
+}
