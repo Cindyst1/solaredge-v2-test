@@ -3,7 +3,7 @@
 import math
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
-from homeassistant.const import UnitOfEnergy, UnitOfPower
+from homeassistant.const import PERCENTAGE, UnitOfEnergy, UnitOfPower
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers import device_registry as dr
@@ -18,10 +18,19 @@ ENERGY_SENSORS = {
     "energy_this_year": "Energy This Year",
     "energy_this_month": "Energy This Month",
     "energy_today": "Energy Today",
+    "produced_energy": "Produced Energy Today",
     "imported_energy": "Imported Energy Today",
     "exported_energy": "Exported Energy Today",
     "consumed_energy": "Consumed Energy Today",
     "self_consumed_energy": "Self Consumed Energy Today",
+}
+
+INVENTORY_SENSORS = {
+    "meters": ("Meters", "METER"),
+    "sensors": ("Sensors", None),
+    "gateways": ("Gateways", None),
+    "batteries": ("Batteries", None),
+    "inverters": ("Inverters", "INVERTER"),
 }
 
 FLOW_SENSORS = {
@@ -48,12 +57,12 @@ async def async_setup_entry(hass, entry, async_add_entities):
         SolarEdgeSensor(entry, "current_power", "Current Power"),
         SolarEdgeSensor(entry, "last_reported_site_power", "Last Reported Site Power"),
         SolarEdgeSensor(entry, "site_status", "Site Status"),
+        SolarEdgeSensor(entry, "storage_level", "Storage Level"),
     ])
-    local_flows = {
-        key for key in FLOW_SENSORS
-        if entry.options.get(LOCAL_POWER_SOURCES.get(key))
-    }
-    entities.extend(SolarEdgeSensor(entry, key, FLOW_SENSORS[key]) for key in sorted(local_flows))
+    entities.extend(SolarEdgeSensor(entry, key, name) for key, name in FLOW_SENSORS.items())
+    entities.extend(
+        SolarEdgeSensor(entry, key, name) for key, (name, _) in INVENTORY_SENSORS.items()
+    )
     async_add_entities(entities)
     if not entry.data.get("device_inventory"):
         return
@@ -61,7 +70,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
     registry = dr.async_get(hass)
     known = set()
     known_power = set()
-    known_flows = local_flows
 
     @callback
     def add_devices():
@@ -97,12 +105,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 SolarEdgeInverterPowerSensor(entry, serial, devices[serial])
                 for serial in sorted(new_power)
             ])
-        new_flows = (FLOW_SENSORS.keys() & coordinator.data.keys()) - known_flows
-        if new_flows:
-            known_flows.update(new_flows)
-            async_add_entities([
-                SolarEdgeSensor(entry, key, FLOW_SENSORS[key]) for key in sorted(new_flows)
-            ])
 
     entry.async_on_unload(coordinator.async_add_listener(add_devices))
     add_devices()
@@ -128,6 +130,22 @@ class SolarEdgeSensor(CoordinatorEntity, SensorEntity):
             self._attr_device_class = SensorDeviceClass.POWER
             self._attr_state_class = SensorStateClass.MEASUREMENT
             self._attr_native_unit_of_measurement = UnitOfPower.WATT
+        elif key == "storage_level":
+            self._attr_device_class = SensorDeviceClass.BATTERY
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+            self._attr_native_unit_of_measurement = PERCENTAGE
+        elif key in INVENTORY_SENSORS:
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def _inventory_count(self):
+        devices = self.coordinator.data.get("devices")
+        _, device_type = INVENTORY_SENSORS[self.key]
+        if devices is None or device_type is None:
+            return None
+        return sum(
+            device["type"] == device_type and device.get("active") is not False
+            for device in devices.values()
+        )
 
     async def async_added_to_hass(self):
         await super().async_added_to_hass()
@@ -178,6 +196,10 @@ class SolarEdgeSensor(CoordinatorEntity, SensorEntity):
         if self.key == "last_reported_site_power":
             sample = self.coordinator.data.get("current_power")
             return sample[0] if sample is not None else None
+        if self.key == "produced_energy":
+            return self.coordinator.data.get("energy_today")
+        if self.key in INVENTORY_SENSORS:
+            return self._inventory_count()
         return self.coordinator.data.get(self.key)
 
     @property
