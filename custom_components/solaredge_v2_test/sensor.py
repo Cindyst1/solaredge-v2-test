@@ -35,6 +35,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     entities = [SolarEdgeSensor(entry, key, name) for key, name in ENERGY_SENSORS.items()]
     entities.extend([
         SolarEdgeSensor(entry, "current_power", "Current Power"),
+        SolarEdgeSensor(entry, "last_reported_site_power", "Last Reported Site Power"),
         SolarEdgeSensor(entry, "site_status", "Site Status"),
     ])
     async_add_entities(entities)
@@ -87,7 +88,9 @@ class SolarEdgeSensor(CoordinatorEntity, SensorEntity):
             self._attr_state_class = SensorStateClass.TOTAL_INCREASING
             self._attr_native_unit_of_measurement = UnitOfEnergy.WATT_HOUR
             self._attr_suggested_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
-        elif key == "current_power" or (key in FLOW_SENSORS and key.endswith("_power")):
+        elif key in ("current_power", "last_reported_site_power") or (
+            key in FLOW_SENSORS and key.endswith("_power")
+        ):
             self._attr_device_class = SensorDeviceClass.POWER
             self._attr_state_class = SensorStateClass.MEASUREMENT
             self._attr_native_unit_of_measurement = UnitOfPower.WATT
@@ -95,7 +98,20 @@ class SolarEdgeSensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self):
         """Return the latest reading, if supplied by SolarEdge."""
+        if self.key == "current_power":
+            return self.coordinator.data.get("fresh_site_power")
+        if self.key == "last_reported_site_power":
+            sample = self.coordinator.data.get("current_power")
+            return sample[0] if sample is not None else None
         return self.coordinator.data.get(self.key)
+
+    @property
+    def extra_state_attributes(self):
+        if self.key == "last_reported_site_power":
+            sample = self.coordinator.data.get("current_power")
+            if sample is not None:
+                return {"sample_at": sample[1]}
+        return None
 
 
 class SolarEdgeInventorySensor(CoordinatorEntity, SensorEntity):
@@ -149,4 +165,5 @@ class SolarEdgeInverterPowerSensor(SolarEdgeInventorySensor):
 
     @property
     def native_value(self):
-        return self.coordinator.data.get("inverter_power", {}).get(self.serial)
+        sample = self.coordinator.data.get("inverter_power", {}).get(self.serial)
+        return sample[0] if sample is not None else None

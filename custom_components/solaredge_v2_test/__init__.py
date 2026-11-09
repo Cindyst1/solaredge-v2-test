@@ -66,6 +66,8 @@ async def async_setup_entry(hass, entry):
                     today + timedelta(days=1),
                 )
             readings = {**slow_data, "lifetime_energy": lifetime, "current_power": power}
+            if power is not None and datetime.fromisoformat(power[1]) >= now - timedelta(hours=2):
+                readings["fresh_site_power"] = power[0]
             if inventory_enabled:
                 active = [
                     serial for serial, device in (slow_data.get("devices") or {}).items()

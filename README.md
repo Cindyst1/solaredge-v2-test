@@ -10,6 +10,8 @@ Met apparaatdetectie aan vraagt de integratie de levenslange productie en vermog
 
 ## Installatie
 
+**Last Reported Site Power** toont de laatste installatiekwartierwaarde uit maximaal elf uur, met het meettijdstip in `sample_at`. **Current Power** toont die waarde alleen als de meting maximaal twee uur oud is. SolarEdge kan toegang tot omvormervermogen en energiestromen afzonderlijk weigeren.
+
 1. Open **HACS → Add from link** en voeg `https://github.com/Cindyst1/solaredge-v2-test` toe als **Integration**.
 2. Download **SolarEdge V2 Test** en herstart Home Assistant.
 3. Ga naar **Instellingen → Apparaten en diensten → Integratie toevoegen → SolarEdge V2 Test** en volg de stappen hieronder vanaf stap 3.

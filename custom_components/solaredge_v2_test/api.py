@@ -129,8 +129,9 @@ async def get_current_power(session, data, serial=None):
     """Read the latest available quarter-hour sample in W."""
     now = datetime.now(UTC)
     path = "/power" if serial is None else f"/inverters/{quote(serial, safe='')}/power"
+    start = now - timedelta(hours=11 if serial is None else 2)
     series = await get_site_data(session, data, path, **{
-        "from": (now - timedelta(hours=2)).isoformat(), "to": now.isoformat(),
+        "from": start.isoformat(), "to": now.isoformat(),
         "resolution": "QUARTER_HOUR", "unit": "W",
     })
     samples = {}
@@ -140,9 +141,12 @@ async def get_current_power(session, data, serial=None):
         except (KeyError, TypeError, ValueError):
             continue
         value = measurement(point.get("value"), series.get("unit"), {"W": 1, "KW": 1000, "MW": 1000000})
-        if stamp.tzinfo is not None and stamp <= now and value is not None:
+        if stamp.tzinfo is not None and start <= stamp <= now and value is not None:
             samples[stamp] = value
-    return samples[max(samples)] if samples else None
+    if not samples:
+        return None
+    latest = max(samples)
+    return samples[latest], latest.isoformat()
 
 
 async def get_power_flow(session, data):
