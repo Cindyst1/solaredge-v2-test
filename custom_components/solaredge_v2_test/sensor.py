@@ -206,6 +206,8 @@ class SolarEdgeSensor(CoordinatorEntity, SensorEntity):
     def extra_state_attributes(self):
         if self._local_watts() is not None:
             return {"source_entity": self.local_source}
+        if self.key == "current_power" and "fresh_site_power" in self.coordinator.data:
+            return {"sample_at": self.coordinator.data["current_power"][1]}
         if self.key == "last_reported_site_power":
             sample = self.coordinator.data.get("current_power")
             if sample is not None:

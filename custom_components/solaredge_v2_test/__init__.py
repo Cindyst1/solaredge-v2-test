@@ -48,6 +48,7 @@ async def async_setup_entry(hass, entry):
             power = await optional(get_current_power(session, data))
             now = dt_util.now()
             today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            sample_at = datetime.fromisoformat(power[1]) if power is not None else None
             if now >= next_slow_update:
                 month = today.replace(day=1)
                 year = month.replace(month=1)
@@ -65,9 +66,13 @@ async def async_setup_entry(hass, entry):
                     datetime.now(UTC) + timedelta(hours=12 if inventory_enabled else 6),
                     today + timedelta(days=1),
                 )
+            elif slow_data.get("energy_today") is None and sample_at is not None and sample_at >= today:
+                # The midnight poll can precede the first production data of the day.
+                slow_data["energy_today"] = await optional(get_energy(session, data, today.isoformat()))
             readings = {**slow_data, "lifetime_energy": lifetime, "current_power": power}
-            if power is not None and datetime.fromisoformat(power[1]) >= now - timedelta(hours=2):
+            if sample_at is not None and now - timedelta(hours=2) <= sample_at <= now:
                 readings["fresh_site_power"] = power[0]
+                readings["flow_solar_power"] = power[0]
             if inventory_enabled:
                 active = [
                     serial for serial, device in (slow_data.get("devices") or {}).items()
