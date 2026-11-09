@@ -29,5 +29,17 @@
       "cannot_connect": "SolarEdge did not return a usable production total. Start setup again.",
       "reauth_successful": "SolarEdge authorization was renewed."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Local power measurements",
+        "description": "Optionally select existing power sensors. For grid power, positive means import and negative means export.",
+        "data": {
+          "local_solar_power": "Local solar power",
+          "local_grid_power": "Local grid power (for example, a P1 meter)"
+        }
+      }
+    }
   }
 }

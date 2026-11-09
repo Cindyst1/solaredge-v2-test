@@ -10,6 +10,8 @@ Met apparaatdetectie aan vraagt de integratie de levenslange productie en vermog
 
 ## Installatie
 
+Via **Instellingen → Apparaten en diensten → SolarEdge V2 Test → Configureren** kun je optioneel lokale vermogenssensoren kiezen. Een P1-vermogenssensor met positieve afname en negatieve teruglevering levert netvermogen en netrichting. Een lokale zonneproductiesensor levert actueel installatievermogen en zonnestroom. Ontbreekt een lokale waarde, dan gebruikt de integratie een beschikbare SolarEdge-meting. De P1-optie levert geen zonneproductie of energiedagtotalen.
+
 **Last Reported Site Power** toont de laatste installatiekwartierwaarde uit maximaal elf uur, met het meettijdstip in `sample_at`. **Current Power** toont die waarde alleen als de meting maximaal twee uur oud is. SolarEdge kan toegang tot omvormervermogen en energiestromen afzonderlijk weigeren.
 
 1. Open **HACS → Add from link** en voeg `https://github.com/Cindyst1/solaredge-v2-test` toe als **Integration**.

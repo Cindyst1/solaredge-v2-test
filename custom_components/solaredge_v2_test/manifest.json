@@ -6,5 +6,5 @@
   "documentation": "https://github.com/Cindyst1/solaredge-v2-test",
   "issue_tracker": "https://github.com/Cindyst1/solaredge-v2-test/issues",
   "iot_class": "cloud_polling",
-  "version": "0.4.2"
+  "version": "0.5.0"
 }

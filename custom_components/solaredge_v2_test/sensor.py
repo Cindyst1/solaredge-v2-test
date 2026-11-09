@@ -1,11 +1,14 @@
 """Expose SolarEdge V2 measurements using separate entity identities."""
 
+import math
+
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.const import UnitOfEnergy, UnitOfPower
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity import EntityCategory
+from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import DOMAIN
@@ -30,6 +33,13 @@ FLOW_SENSORS = {
     "flow_battery_power_direction": "Battery Flow Direction",
 }
 
+LOCAL_POWER_SOURCES = {
+    "current_power": "local_solar_power",
+    "flow_solar_power": "local_solar_power",
+    "flow_grid_power": "local_grid_power",
+    "flow_grid_power_direction": "local_grid_power",
+}
+
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Register the site measurements."""
@@ -39,6 +49,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
         SolarEdgeSensor(entry, "last_reported_site_power", "Last Reported Site Power"),
         SolarEdgeSensor(entry, "site_status", "Site Status"),
     ])
+    local_flows = {
+        key for key in FLOW_SENSORS
+        if entry.options.get(LOCAL_POWER_SOURCES.get(key))
+    }
+    entities.extend(SolarEdgeSensor(entry, key, FLOW_SENSORS[key]) for key in sorted(local_flows))
     async_add_entities(entities)
     if not entry.data.get("device_inventory"):
         return
@@ -46,7 +61,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     registry = dr.async_get(hass)
     known = set()
     known_power = set()
-    known_flows = set()
+    known_flows = local_flows
 
     @callback
     def add_devices():
@@ -99,6 +114,7 @@ class SolarEdgeSensor(CoordinatorEntity, SensorEntity):
     def __init__(self, entry, key, name):
         super().__init__(entry.runtime_data)
         self.key = key
+        self.local_source = entry.options.get(LOCAL_POWER_SOURCES.get(key))
         self._attr_name = f"SolarEdge V2 Test {name}"
         self._attr_unique_id = f"{entry.data['site_id']}_v2_test_{key}"
         if key in ENERGY_SENSORS:
@@ -113,9 +129,50 @@ class SolarEdgeSensor(CoordinatorEntity, SensorEntity):
             self._attr_state_class = SensorStateClass.MEASUREMENT
             self._attr_native_unit_of_measurement = UnitOfPower.WATT
 
+    async def async_added_to_hass(self):
+        await super().async_added_to_hass()
+        if self.local_source:
+            self.async_on_remove(async_track_state_change_event(
+                self.hass, [self.local_source], self._local_power_changed
+            ))
+
+    @callback
+    def _local_power_changed(self, event):
+        self.async_write_ha_state()
+
+    def _local_watts(self):
+        if not self.local_source:
+            return None
+        state = self.hass.states.get(self.local_source)
+        if state is None:
+            return None
+        factor = {"W": 1, "kW": 1000, "MW": 1000000}.get(
+            state.attributes.get("unit_of_measurement")
+        )
+        if factor is None:
+            return None
+        try:
+            watts = float(state.state) * factor
+        except ValueError:
+            return None
+        if not math.isfinite(watts):
+            return None
+        if self.key in ("current_power", "flow_solar_power") and watts < 0:
+            return None
+        return watts
+
+    @property
+    def available(self):
+        return self._local_watts() is not None or super().available
+
     @property
     def native_value(self):
         """Return the latest reading, if supplied by SolarEdge."""
+        local = self._local_watts()
+        if local is not None:
+            if self.key == "flow_grid_power_direction":
+                return "import" if local > 0 else "export" if local < 0 else "idle"
+            return abs(local) if self.key == "flow_grid_power" else local
         if self.key == "current_power":
             return self.coordinator.data.get("fresh_site_power")
         if self.key == "last_reported_site_power":
@@ -125,6 +182,8 @@ class SolarEdgeSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self):
+        if self._local_watts() is not None:
+            return {"source_entity": self.local_source}
         if self.key == "last_reported_site_power":
             sample = self.coordinator.data.get("current_power")
             if sample is not None:

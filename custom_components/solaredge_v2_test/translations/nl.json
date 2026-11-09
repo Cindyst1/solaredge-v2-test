@@ -29,5 +29,17 @@
       "cannot_connect": "SolarEdge gaf geen bruikbare productiestand terug. Start de configuratie opnieuw.",
       "reauth_successful": "De SolarEdge-koppeling is vernieuwd."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Lokale vermogensmetingen",
+        "description": "Kies eventueel eigen vermogenssensoren. Voor netvermogen betekent positief afname en negatief teruglevering.",
+        "data": {
+          "local_solar_power": "Lokaal zonnevermogen",
+          "local_grid_power": "Lokaal netvermogen (bijvoorbeeld P1)"
+        }
+      }
+    }
   }
 }

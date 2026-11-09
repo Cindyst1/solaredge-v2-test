@@ -8,8 +8,11 @@ from uuid import UUID
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, TextSelectorType
+from homeassistant.helpers.selector import (
+    EntitySelector, EntitySelectorConfig, TextSelector, TextSelectorConfig, TextSelectorType,
+)
 from homeassistant.util import dt as dt_util
 
 from .api import (
@@ -27,6 +30,11 @@ class SolarEdgeV2TestFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Connect a SolarEdge Monitoring API V2 application."""
 
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        return LocalPowerOptions()
 
     async def async_step_reauth(self, entry_data):
         """Request a fresh authorization for the existing site."""
@@ -131,4 +139,27 @@ class SolarEdgeV2TestFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="callback", errors=errors,
             description_placeholders={"authorize_url": self.authorize_url},
             data_schema=vol.Schema({vol.Required("callback"): password_field()}),
+        )
+
+
+class LocalPowerOptions(config_entries.OptionsFlowWithReload):
+    """Select optional local measurements without renewing SolarEdge access."""
+
+    async def async_step_init(self, user_input=None):
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+        exclude = [
+            entity.entity_id for entity in self.hass.states.async_all("sensor")
+            if entity.entity_id.startswith("sensor.solaredge_v2_test_")
+        ]
+        schema = vol.Schema({
+            vol.Optional(key): EntitySelector(EntitySelectorConfig(
+                filter=[{"domain": "sensor", "device_class": "power"}],
+                exclude_entities=exclude,
+            ))
+            for key in ("local_solar_power", "local_grid_power")
+        })
+        return self.async_show_form(
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(schema, self.config_entry.options),
         )
