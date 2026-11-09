@@ -2,6 +2,7 @@
 
 from datetime import UTC, datetime, timedelta
 import math
+from urllib.parse import quote
 
 from aiohttp import ClientError, ClientTimeout
 
@@ -124,10 +125,11 @@ async def get_energy(session, data, start=None):
     return value
 
 
-async def get_current_power(session, data):
+async def get_current_power(session, data, serial=None):
     """Read the latest available quarter-hour sample in W."""
     now = datetime.now(UTC)
-    series = await get_site_data(session, data, "/power", **{
+    path = "/power" if serial is None else f"/inverters/{quote(serial, safe='')}/power"
+    series = await get_site_data(session, data, path, **{
         "from": (now - timedelta(hours=2)).isoformat(), "to": now.isoformat(),
         "resolution": "QUARTER_HOUR", "unit": "W",
     })
@@ -137,10 +139,38 @@ async def get_current_power(session, data):
             stamp = datetime.fromisoformat(point["timestamp"])
         except (KeyError, TypeError, ValueError):
             continue
-        value = measurement(point.get("value"), series.get("unit"), {"W": 1, "KW": 1000})
+        value = measurement(point.get("value"), series.get("unit"), {"W": 1, "KW": 1000, "MW": 1000000})
         if stamp.tzinfo is not None and stamp <= now and value is not None:
             samples[stamp] = value
     return samples[max(samples)] if samples else None
+
+
+async def get_power_flow(session, data):
+    """Read the latest site power flow without starting a live session."""
+    payload = await get_site_data(session, data, "/power-flow")
+    try:
+        stamp = datetime.fromisoformat(payload["updatedAt"])
+        age = datetime.now(UTC) - stamp
+    except (KeyError, TypeError, ValueError):
+        return {}
+    if not timedelta(minutes=-1) <= age <= timedelta(minutes=15):
+        return {}
+    readings = {}
+    for node, key in (
+        ("pv", "flow_solar_power"), ("load", "flow_consumption_power"),
+        ("grid", "flow_grid_power"), ("storage", "flow_battery_power"),
+    ):
+        element = payload.get(node)
+        if not isinstance(element, dict):
+            continue
+        power = measurement(element.get("power"), payload.get("unit"), {"W": 1, "KW": 1000})
+        if power is not None:
+            readings[key] = power
+        if node in ("grid", "storage"):
+            status = element.get("status")
+            if isinstance(status, str):
+                readings[f"{key}_direction"] = status.lower()
+    return readings
 
 
 async def get_daily_balance(session, data, start):

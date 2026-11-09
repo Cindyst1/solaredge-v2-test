@@ -20,6 +20,15 @@ ENERGY_SENSORS = {
     "self_consumed_energy": "Self Consumed Energy Today",
 }
 
+FLOW_SENSORS = {
+    "flow_solar_power": "Solar Power Flow",
+    "flow_consumption_power": "Home Consumption Power Flow",
+    "flow_grid_power": "Grid Power Flow",
+    "flow_battery_power": "Battery Power Flow",
+    "flow_grid_power_direction": "Grid Flow Direction",
+    "flow_battery_power_direction": "Battery Flow Direction",
+}
+
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Register the site measurements."""
@@ -33,6 +42,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
         return
     coordinator = entry.runtime_data
     known = set()
+    known_power = set()
+    known_flows = set()
 
     @callback
     def add_devices():
@@ -43,6 +54,20 @@ async def async_setup_entry(hass, entry, async_add_entities):
             async_add_entities([
                 SolarEdgeInventorySensor(entry, serial, devices[serial])
                 for serial in sorted(new_serials)
+            ])
+        power = coordinator.data.get("inverter_power", {})
+        new_power = power.keys() - known_power
+        if new_power:
+            known_power.update(new_power)
+            async_add_entities([
+                SolarEdgeInverterPowerSensor(entry, serial, devices[serial])
+                for serial in sorted(new_power)
+            ])
+        new_flows = (FLOW_SENSORS.keys() & coordinator.data.keys()) - known_flows
+        if new_flows:
+            known_flows.update(new_flows)
+            async_add_entities([
+                SolarEdgeSensor(entry, key, FLOW_SENSORS[key]) for key in sorted(new_flows)
             ])
 
     entry.async_on_unload(coordinator.async_add_listener(add_devices))
@@ -62,7 +87,7 @@ class SolarEdgeSensor(CoordinatorEntity, SensorEntity):
             self._attr_state_class = SensorStateClass.TOTAL_INCREASING
             self._attr_native_unit_of_measurement = UnitOfEnergy.WATT_HOUR
             self._attr_suggested_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
-        elif key == "current_power":
+        elif key == "current_power" or (key in FLOW_SENSORS and key.endswith("_power")):
             self._attr_device_class = SensorDeviceClass.POWER
             self._attr_state_class = SensorStateClass.MEASUREMENT
             self._attr_native_unit_of_measurement = UnitOfPower.WATT
@@ -107,3 +132,21 @@ class SolarEdgeInventorySensor(CoordinatorEntity, SensorEntity):
         if isinstance(active, bool):
             return "active" if active else "inactive"
         return "listed"
+
+
+class SolarEdgeInverterPowerSensor(SolarEdgeInventorySensor):
+    """Latest reported quarter-hour power of an active inverter."""
+
+    _attr_name = "Power (15-minute average)"
+    _attr_entity_category = None
+    _attr_device_class = SensorDeviceClass.POWER
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = UnitOfPower.WATT
+
+    def __init__(self, entry, serial, device):
+        super().__init__(entry, serial, device)
+        self._attr_unique_id = f"{entry.data['site_id']}_inverter_power_{serial}"
+
+    @property
+    def native_value(self):
+        return self.coordinator.data.get("inverter_power", {}).get(self.serial)

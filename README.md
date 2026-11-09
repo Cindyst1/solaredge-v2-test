@@ -4,7 +4,9 @@ Deze testintegratie leest de zonneproductie via de SolarEdge Monitoring API V2. 
 
 Import, export, verbruik en zelfverbruik tonen alleen een waarde als SolarEdge de bijbehorende gegevens levert.
 
-Voor omvormers en meters kun je bij de bestaande integratie **⋮ → Opnieuw configureren** kiezen. Schakel **Omvormers en meters zoeken (DEVICE_DATA)** in en doorloop de aanmelding opnieuw voor dezelfde installatie. Je SolarEdge-app moet beide scopes toestaan. De inventaris wordt bij het laden en ongeveer elke zes uur opgehaald. Elk gevonden record met een serienummer krijgt een apparaat met een diagnostische sensor voor de registratie. Die status geeft aan hoe het apparaat in SolarEdge staat geregistreerd. Vermogen per apparaat en actuele energiestromen vallen buiten deze update.
+Voor omvormers en meters kun je bij de bestaande integratie **⋮ → Opnieuw configureren** kiezen. Schakel **Omvormers en meters zoeken (DEVICE_DATA)** in en doorloop de aanmelding opnieuw voor dezelfde installatie. Je SolarEdge-app moet beide scopes toestaan. Elk gevonden record met een serienummer krijgt een diagnostische registratiesensor. Omvormers die SolarEdge als actief markeert, krijgen ook een vermogenssensor met de laatste beschikbare kwartierwaarde.
+
+Met apparaatdetectie aan vraagt de integratie de levenslange productie en vermogensmetingen elke twee uur op. De inventaris en overige waarden worden ongeveer elke twaalf uur bijgewerkt. De integratie vraagt ook de laatste energiestromen op als het API-plan toegang geeft tot Advanced Monitoring. Ze maakt deze sensoren pas aan als SolarEdge er recente gegevens voor levert.
 
 ## Installatie
 
