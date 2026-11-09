@@ -10,7 +10,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from .api import (
-    ApiError, AuthError, get_current_power, get_daily_balance,
+    ApiError, AuthError, get_current_power, get_daily_balance, get_devices,
     get_energy, get_site_status, get_tokens,
 )
 
@@ -57,6 +57,8 @@ async def async_setup_entry(hass, entry):
                 balance = await optional(get_daily_balance(session, data, today.isoformat()))
                 status = await optional(get_site_status(session, data))
                 slow_data = {**dict(zip(dates, totals, strict=True)), **(balance or {}), "site_status": status}
+                if data.get("device_inventory"):
+                    slow_data["devices"] = await optional(get_devices(session, data))
                 next_slow_update = min(datetime.now(UTC) + timedelta(hours=6), today + timedelta(days=1))
             return {**slow_data, "lifetime_energy": lifetime, "current_power": power}
         except AuthError:

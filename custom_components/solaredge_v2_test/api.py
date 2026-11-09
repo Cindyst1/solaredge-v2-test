@@ -22,7 +22,7 @@ class PermissionError(ApiError):
     """The grant or plan does not allow a particular endpoint."""
 
 
-async def request(session, method, path, *, token=None, **kwargs):
+async def request(session, method, path, *, token=None, response_type=dict, **kwargs):
     """Make a bounded request without logging credentials or response bodies."""
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     try:
@@ -41,9 +41,29 @@ async def request(session, method, path, *, token=None, **kwargs):
             result = await response.json()
     except (ClientError, TimeoutError, ValueError):
         raise ApiError("SolarEdge did not return a usable response") from None
-    if not isinstance(result, dict):
+    if not isinstance(result, response_type):
         raise ApiError("Unexpected SolarEdge response")
     return result
+
+
+async def get_devices(session, data):
+    """Read inverter and meter inventory, keyed by stable device serial."""
+    result = await request(
+        session, "GET", f"/sites/{data['site_id']}/devices",
+        token=data["access_token"], response_type=(dict, list),
+        params={"types": ["INVERTER", "METER"]},
+    )
+    devices = result.get("devices") if isinstance(result, dict) else result
+    if not isinstance(devices, list):
+        raise ApiError("SolarEdge returned an unexpected inventory format")
+    return {
+        device["serialNumber"]: device
+        for device in devices
+        if isinstance(device, dict)
+        and device.get("type") in ("INVERTER", "METER")
+        and isinstance(device.get("serialNumber"), str)
+        and device["serialNumber"].strip()
+    }
 
 
 async def get_tokens(session, credentials, grant_type, **grant):

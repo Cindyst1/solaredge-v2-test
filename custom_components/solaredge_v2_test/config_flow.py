@@ -12,7 +12,10 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, TextSelectorType
 from homeassistant.util import dt as dt_util
 
-from .api import ApiError, AuthError, CALLBACK, DOMAIN, get_energy, get_tokens
+from .api import (
+    ApiError, AuthError, CALLBACK, DOMAIN, PermissionError, get_devices,
+    get_energy, get_tokens,
+)
 
 
 def password_field():
@@ -29,11 +32,22 @@ class SolarEdgeV2TestFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Request a fresh authorization for the existing site."""
         return await self.async_step_user()
 
+    async def async_step_reconfigure(self, user_input=None):
+        """Let an existing installation opt into device inventory."""
+        return await self.async_step_user(user_input)
+
+    def _existing_entry(self):
+        if self.source == config_entries.SOURCE_REAUTH:
+            return self._get_reauth_entry()
+        if self.source == config_entries.SOURCE_RECONFIGURE:
+            return self._get_reconfigure_entry()
+        return None
+
     async def async_step_user(self, user_input=None):
         """Collect the application's credentials and production start."""
         errors = {}
-        reauth = self.source == config_entries.SOURCE_REAUTH
-        existing = self._get_reauth_entry().data if reauth else {}
+        entry = self._existing_entry()
+        existing = entry.data if entry else {}
         if user_input is not None:
             try:
                 client_id = str(UUID(user_input["client_id"].strip()))
@@ -50,10 +64,12 @@ class SolarEdgeV2TestFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         start, datetime.min.time(), tzinfo=dt_util.get_default_time_zone()
                     ).isoformat(),
                     "start_date": start.isoformat(),
+                    "device_inventory": user_input.get("device_inventory", False),
                 }
                 self.external_id = secrets.token_hex(16)
                 params = urlencode({
-                    "client_id": client_id, "scope": "SITE_DATA",
+                    "client_id": client_id,
+                    "scope": "SITE_DATA DEVICE_DATA" if self.credentials["device_inventory"] else "SITE_DATA",
                     "redirect_uri": CALLBACK, "access_duration": 1,
                     "external_id": self.external_id,
                 })
@@ -64,6 +80,7 @@ class SolarEdgeV2TestFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required("client_id", default=existing.get("client_id", "")): str,
             vol.Required("client_secret"): password_field(),
             vol.Required("production_start", default=existing.get("start_date", "")): str,
+            vol.Optional("device_inventory", default=existing.get("device_inventory", False)): bool,
         }))
 
     async def async_step_callback(self, user_input=None):
@@ -86,8 +103,8 @@ class SolarEdgeV2TestFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "invalid_callback"
             else:
                 await self.async_set_unique_id(site_id)
-                reauth = self.source == config_entries.SOURCE_REAUTH
-                if reauth:
+                entry = self._existing_entry()
+                if entry:
                     self._abort_if_unique_id_mismatch(reason="wrong_site")
                 else:
                     self._abort_if_unique_id_configured()
@@ -98,12 +115,16 @@ class SolarEdgeV2TestFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     )
                     data = {**self.credentials, **tokens, "site_id": site_id}
                     await get_energy(session, data)
+                    if data["device_inventory"]:
+                        await get_devices(session, data)
                 except AuthError:
                     return self.async_abort(reason="authorization_failed")
+                except PermissionError:
+                    return self.async_abort(reason="insufficient_permissions")
                 except ApiError:
                     return self.async_abort(reason="cannot_connect")
-                if reauth:
-                    return self.async_update_reload_and_abort(self._get_reauth_entry(), data=data)
+                if entry:
+                    return self.async_update_reload_and_abort(entry, data=data)
                 return self.async_create_entry(title="SolarEdge V2 Test", data=data)
 
         return self.async_show_form(

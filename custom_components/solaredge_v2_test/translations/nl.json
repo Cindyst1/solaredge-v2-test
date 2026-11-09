@@ -7,7 +7,8 @@
         "data": {
           "client_id": "Client ID",
           "client_secret": "Client Secret",
-          "production_start": "Startdatum productie (JJJJ-MM-DD)"
+          "production_start": "Startdatum productie (JJJJ-MM-DD)",
+          "device_inventory": "Omvormers en meters zoeken (DEVICE_DATA)"
         }
       },
       "callback": {
@@ -23,6 +24,7 @@
     "abort": {
       "already_configured": "Deze installatie is al gekoppeld.",
       "wrong_site": "Kies dezelfde SolarEdge-installatie als bij de eerdere koppeling.",
+      "insufficient_permissions": "SolarEdge weigert toegang. Controleer of de app SITE_DATA toestaat en voor apparaatdetectie ook DEVICE_DATA.",
       "authorization_failed": "SolarEdge heeft de aanmelding geweigerd. Controleer je appgegevens en start een nieuwe aanmelding.",
       "cannot_connect": "SolarEdge gaf geen bruikbare productiestand terug. Start de configuratie opnieuw.",
       "reauth_successful": "De SolarEdge-koppeling is vernieuwd."

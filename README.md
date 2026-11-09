@@ -2,7 +2,9 @@
 
 Deze testintegratie leest de zonneproductie via de SolarEdge Monitoring API V2. Ze gebruikt eigen entiteiten. Levenslange productie en het laatste kwartiergemiddelde van het vermogen worden elk uur opgevraagd. Productie vandaag, deze maand en dit jaar, de sitestatus en de dagtotalen voor import, export, verbruik en zelfverbruik worden elke zes uur opgevraagd. Dagtotalen worden na middernacht bij de eerstvolgende uurupdate vernieuwd.
 
-Import, export, verbruik en zelfverbruik tonen alleen een waarde als SolarEdge de bijbehorende gegevens levert. Deze test gebruikt SITE_DATA. Apparaatinventaris, batterijmetingen en actuele energiestromen zijn geen onderdeel van deze versie.
+Import, export, verbruik en zelfverbruik tonen alleen een waarde als SolarEdge de bijbehorende gegevens levert.
+
+Voor omvormers en meters kun je bij de bestaande integratie **⋮ → Opnieuw configureren** kiezen. Schakel **Omvormers en meters zoeken (DEVICE_DATA)** in en doorloop de aanmelding opnieuw voor dezelfde installatie. Je SolarEdge-app moet beide scopes toestaan. De inventaris wordt bij het laden en ongeveer elke zes uur opgehaald. Elk gevonden record met een serienummer krijgt een apparaat met een diagnostische sensor voor de registratie. Die status geeft aan hoe het apparaat in SolarEdge staat geregistreerd. Vermogen per apparaat en actuele energiestromen vallen buiten deze update.
 
 ## Installatie
 

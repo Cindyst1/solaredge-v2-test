@@ -7,7 +7,8 @@
         "data": {
           "client_id": "Client ID",
           "client_secret": "Client Secret",
-          "production_start": "Production start date (YYYY-MM-DD)"
+          "production_start": "Production start date (YYYY-MM-DD)",
+          "device_inventory": "Discover inverters and meters (DEVICE_DATA)"
         }
       },
       "callback": {
@@ -23,6 +24,7 @@
     "abort": {
       "already_configured": "This site is already configured.",
       "wrong_site": "Select the same SolarEdge site as before.",
+      "insufficient_permissions": "SolarEdge denied access. Check that the app allows SITE_DATA and, for device discovery, DEVICE_DATA.",
       "authorization_failed": "SolarEdge rejected the authorization. Check your app credentials and start a fresh sign-in.",
       "cannot_connect": "SolarEdge did not return a usable production total. Start setup again.",
       "reauth_successful": "SolarEdge authorization was renewed."
