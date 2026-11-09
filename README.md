@@ -1,6 +1,8 @@
 # SolarEdge V2 Test
 
-Deze testintegratie leest de levenslange zonneproductie via de SolarEdge Monitoring API V2. Home Assistant toont de teller als een aparte energiesensor. De integratie leest elk uur uit.
+Deze testintegratie leest de zonneproductie via de SolarEdge Monitoring API V2. Ze gebruikt eigen entiteiten. Levenslange productie en het laatste kwartiergemiddelde van het vermogen worden elk uur opgevraagd. Productie vandaag, deze maand en dit jaar, de sitestatus en de dagtotalen voor import, export, verbruik en zelfverbruik worden elke zes uur opgevraagd. Dagtotalen worden na middernacht bij de eerstvolgende uurupdate vernieuwd.
+
+Import, export, verbruik en zelfverbruik tonen alleen een waarde als SolarEdge de bijbehorende gegevens levert. Deze test gebruikt SITE_DATA. Apparaatinventaris, batterijmetingen en actuele energiestromen zijn geen onderdeel van deze versie.
 
 ## Installatie
 
