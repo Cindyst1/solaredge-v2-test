@@ -4,6 +4,7 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, Sen
 from homeassistant.const import UnitOfEnergy, UnitOfPower
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -42,6 +43,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     if not entry.data.get("device_inventory"):
         return
     coordinator = entry.runtime_data
+    registry = dr.async_get(hass)
     known = set()
     known_power = set()
     known_flows = set()
@@ -49,7 +51,23 @@ async def async_setup_entry(hass, entry, async_add_entities):
     @callback
     def add_devices():
         devices = coordinator.data.get("devices") or {}
-        new_serials = devices.keys() - known
+        site_id = entry.data["site_id"]
+        inactive = {
+            serial for serial, device in devices.items()
+            if device["type"] == "INVERTER" and device.get("active") is False
+        }
+        for serial in inactive:
+            identifier = (DOMAIN, f"{site_id}_{serial}")
+            registered = registry.async_get_device(identifiers={identifier})
+            if (
+                registered is not None
+                and registered.identifiers == {identifier}
+                and registered.config_entries == {entry.entry_id}
+            ):
+                registry.async_remove_device(registered.id)
+                known.discard(serial)
+                known_power.discard(serial)
+        new_serials = devices.keys() - inactive - known
         if new_serials:
             known.update(new_serials)
             async_add_entities([
