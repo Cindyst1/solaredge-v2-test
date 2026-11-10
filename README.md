@@ -1,5 +1,7 @@
 # SolarEdge V2 Test
 
+[English](README_EN.md)
+
 SolarEdge V2 Test is een aangepaste Home Assistant-integratie voor de SolarEdge Monitoring API V2. Ze leest zonneopbrengst uit de SolarEdge-cloud. De sensor **Lifetime Energy** kan als zonnebron in het Home Assistant Energiedashboard dienen. De integratie is beschikbaar via HACS als aangepaste repository.
 
 ## 1. Installeer via HACS
