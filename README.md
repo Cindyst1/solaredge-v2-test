@@ -1,43 +1,56 @@
 # SolarEdge V2 Test
 
-Deze testintegratie leest de zonneproductie via de SolarEdge Monitoring API V2. Ze gebruikt eigen entiteiten. Levenslange productie en het laatste kwartiergemiddelde van het vermogen worden elk uur opgevraagd. Productie vandaag, deze maand en dit jaar, de sitestatus en de dagtotalen voor import, export, verbruik en zelfverbruik worden elke zes uur opgevraagd. Dagtotalen worden na middernacht bij de eerstvolgende uurupdate vernieuwd.
+SolarEdge V2 Test is een aangepaste Home Assistant-integratie voor de SolarEdge Monitoring API V2. Ze leest zonneopbrengst uit de SolarEdge-cloud. De sensor **Lifetime Energy** kan als zonnebron in het Home Assistant Energiedashboard dienen. De integratie is beschikbaar via HACS als aangepaste repository.
 
-Import, export, verbruik en zelfverbruik tonen alleen een waarde als SolarEdge de bijbehorende gegevens levert.
+## 1. Installeer via HACS
 
-Voor omvormers en meters kun je bij de bestaande integratie **⋮ → Opnieuw configureren** kiezen. Schakel **Omvormers en meters zoeken (DEVICE_DATA)** in en doorloop de aanmelding opnieuw voor dezelfde installatie. Je SolarEdge-app moet beide scopes toestaan. Elk gevonden record met een serienummer krijgt een diagnostische registratiesensor. Omvormers die SolarEdge als actief markeert, krijgen ook een vermogenssensor met de laatste beschikbare kwartierwaarde.
+1. Open **HACS** in Home Assistant.
+2. Klik rechtsboven op **⋮ → Aangepaste repositories** (**Custom repositories**).
+3. Voeg `https://github.com/Cindyst1/solaredge-v2-test` toe en kies **Integratie** (**Integration**) als categorie.
+4. Zoek in HACS naar **SolarEdge V2 Test**, open het resultaat en klik op **Downloaden**.
+5. Herstart Home Assistant. Open daarna **Instellingen → Apparaten en diensten → Integratie toevoegen** en zoek naar **SolarEdge V2 Test**.
 
-Met apparaatdetectie aan vraagt de integratie de levenslange productie en vermogensmetingen elke twee uur op. De inventaris en overige waarden worden ongeveer elke twaalf uur bijgewerkt. De integratie probeert ook de laatste energiestromen op te vragen via Advanced Monitoring.
+Zie ook de [HACS-handleiding voor aangepaste repositories](https://www.hacs.xyz/docs/faq/custom_repositories/).
 
-## Installatie
+## 2. Koppel je SolarEdge-installatie
 
-Via **Instellingen → Apparaten en diensten → SolarEdge V2 Test → Configureren** kun je optioneel lokale vermogenssensoren kiezen. Een P1-vermogenssensor met positieve afname en negatieve teruglevering levert netvermogen en netrichting. Kies voor lokaal zonnevermogen de **AC Power**-sensor van je omvormer uit bijvoorbeeld SolarEdge Modbus Multi. Daarmee volgen **Current Power** en **Solar Power Flow** de lokale meting. Ontbreekt een lokale waarde, dan gebruikt de integratie een beschikbare SolarEdge-meting. De P1-optie levert geen zonneproductie of energiedagtotalen.
+1. Maak in het [SolarEdge Developer Platform](https://developer.solaredge.com/) een **Monitoring API**-app aan met toegangstype **Site Access** en scope **SITE_DATA**.
+2. Registreer `http://localhost:8080/oauth/callback` als toegestane redirect-URL. Bewaar je **Client ID** en **Client Secret**.
+3. Vul in Home Assistant je Client ID, Client Secret en de eerste productiedatum van je installatie in (`JJJJ-MM-DD`).
+4. Open op hetzelfde apparaat de aanmeldlink die Home Assistant toont. Kies je SolarEdge-installatie en geef toestemming.
+5. Kopieer de volledige `localhost`-URL uit de adresbalk naar het afgeschermde veld in Home Assistant. De browser kan op die URL een verbindingsfout tonen. De URL bevat de tijdelijke aanmeldcode die Home Assistant nodig heeft.
 
-De omvormer moet via zijn lokale IP-adres bereikbaar zijn en SunSpec Modbus TCP moet ingeschakeld zijn. Bij SetApp is de standaardpoort doorgaans 1502. Laat één Modbus-client de omvormer uitlezen en kies de vermogenssensor van die client in SolarEdge V2 Test.
+De integratie vraagt toestemming voor één maand en vernieuwt het toegangstoken tijdens die periode. Doorloop de aanmelding opnieuw als Home Assistant daarom vraagt. Houd je Client Secret en de volledige callback-URL privé.
 
-De entiteiten hieronder komen overeen met de 23 entiteiten van de klassieke SolarEdge-integratie. De energiebalanswaarden zijn dagtotalen. Een entiteit blijft onbekend als de bijbehorende bron ontbreekt. De apparaatlijst wordt momenteel alleen voor omvormers en meters opgevraagd. Voor sensoren, gateways, batterijen en laadniveau zijn er entiteiten zonder ingevulde waarde. Inventaristellingen tellen alleen records die niet expliciet inactief zijn.
+## Welke sensoren leveren een waarde?
 
-| Klassieke SolarEdge-entiteiten | SolarEdge V2 Test |
+| Sensoren | Bron en vereisten |
 | --- | --- |
-| Lifetime Energy, Energy This Year, Energy This Month, Energy Today | Dezelfde vier productietotalen |
-| Current Power, Site Details | Current Power, Site Status |
-| Meters, Sensors, Gateways, Batteries, Inverters | Dezelfde vijf inventaristellingen |
-| Power Consumption, Solar Power, Grid Power, Stored Power | Home Consumption, Solar, Grid en Battery Power Flow |
-| Grid Flow Direction, Storage Flow Direction | Grid en Battery Flow Direction |
-| Imported, Produced, Consumed, Self Consumed en Exported Energy | Dezelfde vijf waarden voor vandaag |
-| Storage Level | Storage Level |
+| **Lifetime Energy** | Cumulatieve zonneopbrengst in kWh via **SITE_DATA**. Gebruik deze sensor voor zonneproductie in het Energiedashboard. |
+| **Energy Today**, **Produced Energy Today**, **Energy This Month**, **Energy This Year** | Opbrengst over de betreffende periode via **SITE_DATA**. De twee dagsensoren tonen dezelfde productie. |
+| **Current Power**, **Solar Power Flow** | Zonnevermogen in W. De cloud levert een kwartierwaarde die maximaal twee uur oud mag zijn. Je kunt ook een bestaande lokale vermogenssensor kiezen. |
+| **Last Reported Site Power** | Laatst beschikbare cloudwaarde voor het installatievermogen binnen het zoekvenster van elf uur. Het meettijdstip staat in `sample_at`. |
+| **Site Status**, **Imported Energy Today**, **Exported Energy Today**, **Consumed Energy Today**, **Self Consumed Energy Today** | Optionele cloudgegevens. De sensoren krijgen een waarde als SolarEdge die voor je installatie en toegang levert. |
+| **Grid Power Flow**, **Grid Flow Direction** | Via een gekozen lokale netvermogenssensor, zoals P1, of via de cloud als Advanced Monitoring energiestromen levert. |
+| **Home Consumption Power Flow**, **Battery Power Flow**, **Battery Flow Direction** | Vereisen energiestromen via Advanced Monitoring. SolarEdge kan toegang tot dit onderdeel afzonderlijk weigeren. |
+| **Meters**, **Inverters**, registratiestatus per apparaat | Schakel apparaatdetectie in en autoriseer ook **DEVICE_DATA**. De inventaris is afhankelijk van wat SolarEdge voor je site teruggeeft. |
+| **Power (15-minute average)** per omvormer | Vereist een omvormer die SolarEdge als actief rapporteert en toegang tot diens vermogensgegevens. Inventaristoegang alleen kan onvoldoende zijn. |
+| **Sensors**, **Gateways**, **Batteries**, **Storage Level** | Deze entiteiten hebben in v0.6.1 nog geen databron. |
 
-**Last Reported Site Power** toont de laatste installatiekwartierwaarde uit maximaal elf uur, met het meettijdstip in `sample_at`. **Current Power** toont die waarde alleen als de meting maximaal twee uur oud is. SolarEdge kan toegang tot omvormervermogen en energiestromen afzonderlijk weigeren.
+Een optionele sensor kan **Onbekend** tonen als de bron ontbreekt of SolarEdge toegang weigert. **Lifetime Energy** en het installatievermogen worden elk uur opgevraagd, of elke twee uur met apparaatdetectie. De overige dagtotalen en inventaris worden minder vaak bijgewerkt. De tijd van de laatste cloudmeting kan afwijken van het moment waarop Home Assistant de sensor bijwerkt.
 
-1. Open **HACS → Add from link** en voeg `https://github.com/Cindyst1/solaredge-v2-test` toe als **Integration**.
-2. Download **SolarEdge V2 Test** en herstart Home Assistant.
-3. Ga naar **Instellingen → Apparaten en diensten → Integratie toevoegen → SolarEdge V2 Test** en volg de stappen hieronder vanaf stap 3.
+### Apparaatdetectie of een lokale bron toevoegen
 
-## Handmatige installatie en configuratie
+- **Omvormers en meters.** Sta **DEVICE_DATA** toe in je SolarEdge-app. Open bij de integratie **⋮ → Opnieuw configureren**, vink **Omvormers en meters zoeken** aan en autoriseer dezelfde installatie opnieuw.
+- **Netvermogen.** Open **Configureren** en kies bij **Lokaal netvermogen** een bestaande sensor zoals je P1-meter. Positief betekent afname en negatief betekent teruglevering. Deze keuze levert netvermogen en netrichting. De energiedagtotalen komen via SolarEdge.
+- **Zonnevermogen.** Kies bij **Lokaal zonnevermogen** eventueel een bestaande Home Assistant-sensor in W of kW. De integratie leest de gekozen entiteit uit. Voor een installatie die uitsluitend de cloud gebruikt, kun je beide lokale velden leeg laten.
 
-1. Kopieer de map `custom_components/solaredge_v2_test` naar `/config/custom_components/` op je Home Assistant-server.
-2. Herstart Home Assistant en kies **Instellingen → Apparaten en diensten → Integratie toevoegen → SolarEdge V2 Test**.
-3. Gebruik de Client ID en Client Secret van je SolarEdge-app met **Site Access**, **SITE_DATA** en redirect-URL `http://localhost:8080/oauth/callback`. Vul de eerste productiedatum in als `JJJJ-MM-DD`.
-4. Open de aanmeldlink en geef toestemming. Kopieer de hele localhost-URL uit de adresbalk naar het afgeschermde veld in Home Assistant. Een verbindingsfout op localhost is verwacht.
-5. Zoek **SolarEdge V2 Test Lifetime Energy** bij de entiteiten en vergelijk de stand met de levenslange opbrengst in de SolarEdge-app. Laat je Energiedashboard tijdens deze test op de bestaande configuratie staan.
+## Energiedashboard
 
-De toegang wordt voor één maand aangevraagd. Home Assistant vernieuwt het toegangstoken tijdens die periode en vraagt opnieuw om aanmelding als SolarEdge de toegang intrekt of deze verloopt. Behandel Home Assistant-back-ups als vertrouwelijk, omdat ze de integratiegegevens kunnen bevatten.
+1. Zoek **SolarEdge V2 Test Lifetime Energy** in **Instellingen → Apparaten en diensten → Entiteiten** en vergelijk de tellerstand met de levenslange opbrengst in SolarEdge.
+2. Open **Instellingen → Dashboards → Energie** en selecteer **Lifetime Energy** onder **Zonnepanelen**.
+3. Gebruik voor dezelfde zonnepanelen één productiebron per periode om dubbeltelling te voorkomen. Als je overstapt van een bestaande sensor en de oude opbrengst in het Energiedashboard wilt behouden, plan dan eerst de overgang van de statistieken. Deze integratie neemt de historie van de oude Home Assistant-sensor niet automatisch over. De levenslange tellerstand bevat wel de opbrengst sinds de opgegeven productiestart.
+
+## Handmatig installeren
+
+Kopieer `custom_components/solaredge_v2_test` uit de [GitHub-release](https://github.com/Cindyst1/solaredge-v2-test/releases/latest) naar `/config/custom_components/`. Herstart Home Assistant, voeg **SolarEdge V2 Test** toe en volg de stappen onder **Koppel je SolarEdge-installatie**.
